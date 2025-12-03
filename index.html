@@ -132,10 +132,11 @@ function n() {
 
   // Set the current movie
   cur = shuffledList[currentIndex];
+  // Update counter display
+  updateCounter();
   currentIndex++; // Move to the next index
 
-// Update counter display
-  updateCounter();
+
 
   // Update the display
   let ex = document.getElementById('e');
