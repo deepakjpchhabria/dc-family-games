@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>Family Spin The Wheel — Responsive</title>
+<title>Family Spin The Wheel — Fixed Pointer</title>
 <style>
   :root{
     --bg:#071028; --panel:#0f1724; --accent:#ffd166; --muted:#9fb0d1;
@@ -35,52 +35,75 @@
   }
   @media (max-width:860px){ .wrap{ grid-template-columns:1fr; } }
 
-  /* wheel area */
-  .wheel-area{ display:flex; align-items:center; justify-content:center; flex-direction:column; gap:12px; padding:6px; }
-  /* FIXED RESPONSIVE WHEEL HOLDER */
+  /* wheel area (positioning parent) */
+  .wheel-area{ display:flex; align-items:center; justify-content:center; flex-direction:column; gap:12px; padding:6px; position:relative; }
+
+  /* wheel-holder contains only the canvas and is the rotating element */
   .wheel-holder {
     width: 100%;
-    max-width: 360px;       /* comfortable for most phones */
+    max-width: 360px;
     aspect-ratio: 1/1;
     position: relative;
     margin: 0 auto;
     overflow: hidden;
     touch-action: manipulation;
+    z-index:10;
   }
-  /* canvas must be responsive */
+
+  /* make canvas fill the holder */
   canvas{
     width:100%;
     height:100%;
     display:block;
     border-radius:50%;
+    user-select:none;
+    -webkit-user-select:none;
+    -webkit-tap-highlight-color: transparent;
   }
-  .pointer{
+
+  /* overlay elements (not rotating) */
+  .wheel-overlay{
     position:absolute;
     left:50%;
+    top:50%;
+    transform:translate(-50%,-50%);
+    width:100%;
+    max-width:360px;
+    height:100%;
+    pointer-events:none; /* allow clicks to pass through except center button */
+    z-index:30;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+  .wheel-overlay .pointer{
+    position:absolute;
+    top: -10px; /* push pointer above the top edge of the wheel */
+    left:50%;
     transform:translateX(-50%);
-    top:-8px;
     width:0;height:0;
     border-left:16px solid transparent;
     border-right:16px solid transparent;
     border-bottom:28px solid var(--accent);
     filter:drop-shadow(0 6px 10px rgba(0,0,0,.45));
-    z-index:30;
+    z-index:40;
     pointer-events:none;
   }
-  .center{
-    position:absolute;
-    left:50%; top:50%;
-    transform:translate(-50%,-50%);
+
+  .wheel-overlay .center{
+    pointer-events:auto; /* enable clicks */
+    position:relative;
     width:84px; height:84px;
     border-radius:50%;
     display:flex; align-items:center; justify-content:center;
     background:linear-gradient(180deg,#fff,#f3f3f3);
     color:#111; font-weight:800;
     box-shadow:0 8px 26px rgba(0,0,0,.45);
-    user-select:none;
-    z-index:25;
+    z-index:45;
     touch-action:manipulation;
   }
+
   /* controls */
   .controls{ padding:8px; display:flex; flex-direction:column; gap:12px; }
   .controls h2{ margin:0; font-size:18px; color:var(--muted); font-weight:700; }
@@ -109,11 +132,17 @@
 <body>
 <div class="wrap">
   <div class="wheel-area">
+    <!-- rotating wrapper contains only the canvas -->
     <div class="wheel-holder" id="wheelWrap">
-      <div class="pointer" aria-hidden="true"></div>
       <canvas id="wheelCanvas" width="800" height="800" aria-hidden="true"></canvas>
-      <div class="center" id="centerBtn">SPIN</div>
     </div>
+
+    <!-- overlay (fixed, does not rotate) -->
+    <div class="wheel-overlay" aria-hidden="false">
+      <div class="pointer" aria-hidden="true"></div>
+      <button class="center" id="centerBtn" aria-label="Spin">SPIN</button>
+    </div>
+
     <div class="small" id="resultLabel" aria-live="polite"></div>
   </div>
 
@@ -134,7 +163,7 @@
     <div class="small muted">Tips: Use 6–12 segments for best fun. Changes save to this device.</div>
   </div>
 
-  <footer>Family Spin • Responsive for iOS & Android • No install needed</footer>
+  <footer>Family Spin • Pointer & SPIN button fixed • No install needed</footer>
 </div>
 
 <script>
@@ -159,7 +188,6 @@
 
   // --- responsive canvas handling (DPR aware)
   function fixCanvasForDPR(){
-    // measure CSS size of canvas
     const rect = canvas.getBoundingClientRect();
     const cssW = Math.max(200, Math.round(rect.width));
     const cssH = Math.round(rect.height);
@@ -205,7 +233,6 @@
       ctx.translate(radius*0.62,0);
       ctx.rotate(Math.PI/2);
       ctx.fillStyle = '#071028';
-      // font size scaled by radius
       const fontSize = Math.max(12, Math.round(radius * 0.09));
       ctx.font = `bold ${fontSize}px system-ui,Segoe UI,Roboto`;
       wrapText(ctx, segments[i], - (radius*0.2), -fontSize/2, radius*0.44, fontSize + 2);
@@ -267,12 +294,11 @@
     localStorage.setItem('ftw_segments', JSON.stringify(segments));
     drawWheel(0);
     renderList();
-    // reset any CSS transform so canvas and wrapper match visuals
     wheelWrap.style.transition = '';
     wheelWrap.style.transform = '';
   }
 
-  // --- spin logic (keeps wrapper transform for animation)
+  // --- spin logic (wrapper rotate only)
   function spinWheel(){
     if(isSpinning) return;
     if(segments.length === 0){ alert('Add at least one segment'); return; }
@@ -282,29 +308,25 @@
     const chosenIndex = Math.floor(Math.random() * n);
     const sliceAngle = 360 / n;
     const rotations = Math.floor(Math.random()*3) + 4; // 4..6 full spins
-    // compute degrees so chosen slice center lands at pointer (top -> 270deg)
+    // center of chosen slice:
     const sliceCenterDeg = (chosenIndex * sliceAngle) + (sliceAngle/2);
     const targetDeg = rotations * 360 + 270 - sliceCenterDeg;
 
-    // animate wrapper (GPU accelerated)
+    // animate wheelWrap (only canvas inside rotates)
     wheelWrap.style.transition = 'transform 4.6s cubic-bezier(.15,.9,.3,1)';
     wheelWrap.style.transformOrigin = '50% 50%';
     wheelWrap.style.transform = `rotate(${targetDeg}deg)`;
 
-    // optional ticks
     simpleTickEffect(6);
 
     const onEnd = () => {
       wheelWrap.style.transition = '';
-      // normalize final angle for canvas redraw: finalDeg is 0..360
       const finalDeg = ((targetDeg % 360) + 360) % 360;
-      // convert to radians and invert sign for canvas rotation direction
       const rotationRad = (finalDeg * Math.PI/180) * -1;
       drawWheel(rotationRad);
       setTimeout(()=> {
         const winner = segments[chosenIndex];
         updateResult(`Result: ${winner}`);
-        // small alert for clarity on iOS (can be removed if you prefer no alert)
         alert(`Winner: ${winner}`);
         isSpinning = false;
       }, 80);
@@ -350,7 +372,7 @@
   window.addEventListener('resize', ()=> { clearTimeout(rio); rio = setTimeout(()=> { fixCanvasForDPR(); drawWheel(0); }, 120); });
   window.addEventListener('orientationchange', ()=> { setTimeout(()=> { fixCanvasForDPR(); drawWheel(0); }, 200); });
 
-  // small tick effect using WebAudio (non-blocking)
+  // tick effect using WebAudio (non-blocking)
   function simpleTickEffect(repeat){
     if(!window.AudioContext) return;
     try{
@@ -374,7 +396,7 @@
     }catch(e){}
   }
 
-  // expose small helper for debugging (optional)
+  // expose helper
   window.ftw = { redraw: saveAndRedraw, segments };
 
 })();
