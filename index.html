@@ -119,10 +119,14 @@
       return dp[a.length][b.length];
     }
     function c(){
+      
+      // Blur the input field to close the keyboard on iOS
+      i.blur();
+      
       let a = clean(i.value);
       let b = clean(cur[1]);
     
-      if(!a){ r.innerText = "Type something!"; return; }
+      if(!a){ r.innerText = "Type a guess!"; return; }
     
       let ok = false;
     
