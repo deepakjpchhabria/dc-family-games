@@ -1,0 +1,230 @@
+<!doctype html><html><head>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Word Aura — Deepak Edition</title>
+<style>
+  :root{--bg:#071028;--card:#0f1724;--accent:#ffd166;--good:#4ADE80;--bad:#FF6B6B}
+  body{margin:0;font-family:system-ui,-apple-system;min-height:100vh;background:linear-gradient(180deg,var(--bg),#02121b);color:#fff;display:flex;align-items:center;justify-content:center;padding:18px}
+  .wrap{width:min(760px,96vw);background:linear-gradient(180deg,#081428,#04101a);padding:18px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.6)}
+  h1{margin:0 0 8px 0;font-size:18px;text-align:center}
+  .word{font-size:46px;text-align:center;padding:18px 8px;font-weight:800;color:var(--accent)}
+  .scoreRow{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:8px}
+  .score{font-weight:800}
+  .streak{font-size:13px;color:#cbd5e1}
+  .btns{display:flex;gap:10px;justify-content:center;margin-top:10px;flex-wrap:wrap}
+  button{background:var(--accent);color:#111;border:0;padding:10px 16px;border-radius:10px;font-weight:800;cursor:pointer}
+  button.secondary{background:#1b263b;color:#fff}
+  .small{font-size:13px;color:#9fb0d1;text-align:center;margin-top:8px}
+  .confetti{pointer-events:none;position:fixed;left:0;top:0;width:100%;height:100%;z-index:9999;overflow:hidden}
+  .meta{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center;margin-top:8px}
+  .hint{font-size:13px;color:#cbd5e1}
+  .bar{height:8px;background:rgba(255,255,255,0.06);border-radius:6px;overflow:hidden;width:100%}
+  .bar > i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),#fff);width:0%}
+  .controls-row{display:flex;gap:8px;justify-content:center;align-items:center;margin-top:10px;flex-wrap:wrap}
+  .small-muted{font-size:12px;color:#9fb0d1}
+</style>
+</head><body>
+<div class="wrap">
+  <h1>Word Aura — Deepak Edition</h1>
+  <div class="scoreRow">
+    <div class="score">Score: <span id="score">0</span></div>
+    <div class="streak">Streak: <span id="streak">0</span> • High: <span id="high">0</span></div>
+  </div>
+
+  <div class="word" id="word">—</div>
+  <div class="bar" title="Time left"><i id="timeBar"></i></div>
+
+  <div class="btns" id="mainBtns">
+    <button id="real">REAL</button>
+    <button id="filmy" class="secondary">FILMY</button>
+    <button id="fake">FAKE</button>
+  </div>
+
+  <div class="controls-row">
+    <button id="pauseBtn" class="secondary">PAUSE</button>
+    <button id="resumeBtn" style="display:none">RESUME</button>
+    <button id="restartBtn" style="background:#ffd166;color:#111">RESTART</button>
+  </div>
+
+  <div class="meta">
+    <div class="hint">Visible time: <span id="vis">3.00</span>s</div>
+    <div class="hint">Miss = -1 • Wrong = -1 • Correct = +2</div>
+    <div class="hint">Speed up at 5 & 10 streaks</div>
+  </div>
+  <div class="small">Tip: Let family shout answers — game is for the crowd too. 🎬</div>
+</div>
+
+<div id="confetti" class="confetti"></div>
+
+<script>
+// Word list: [word, category] categories: real / filmy / fake
+const WORDS=[
+  ["Astitva","real"],["Pyaar","real"],["Zindagi","real"],["Sukoon","real"],["Nayaab","real"],
+  ["Dilwale","filmy"],["DDLJ","filmy"],["Kabhi Khushi","filmy"],["Lagaan","filmy"],["Jab We Met","filmy"],
+  ["Soluna","fake"],["Rivulett","fake"],["Glamex","fake"],["Torvex","fake"],["Melloria","fake"],
+  ["Namaste","real"],["Chai","real"],["Sadak","real"],["Gully","real"],["Dostana","filmy"],
+  ["Pyarayan","fake"],["Bollywoodia","fake"],["Rangdhanu","fake"],["Surya","real"],["Rockstar","filmy"],
+  ["Masala","real"],["Tamasha","filmy"],["Aashiqui","filmy"],["Zenith","fake"],["Parvaz","real"],
+  ["Sholay","filmy"],["Barfi","filmy"],["Arzoo","real"],["Kahaani","filmy"],["Chandni","filmy"],
+  ["Nimora","fake"],["Vostro","fake"],["Amanat","real"],["Mehboob","real"],["Garamella","fake"],
+  ["Brahmastra","filmy"],["TaareZameen","filmy"],["Silsila","filmy"],["Roshni","real"],["Anand","real"],
+  ["K3G","filmy"],["Raat","real"],["Palayan","fake"],["Dippu","fake"],["Saahas","real"]
+];
+
+// State
+let score=0,streak=0,high=+localStorage.getItem('wa_high')||0;
+let current=null, visibleTime=3000, timer=null, startTS=0;
+let paused=false, remaining=0;
+const wordEl=document.getElementById('word'), scoreEl=document.getElementById('score'), streakEl=document.getElementById('streak'), highEl=document.getElementById('high'), visEl=document.getElementById('vis'), timeBar=document.getElementById('timeBar');
+highEl.innerText=high;
+
+// audio helpers
+function beep(freq,dur,vol=0.06){ try{ const a=new (window.AudioContext||window.webkitAudioContext)(); const o=a.createOscillator(), g=a.createGain(); o.type='sine'; o.frequency.value=freq; g.gain.value=vol; o.connect(g); g.connect(a.destination); o.start(); setTimeout(()=>{ o.stop(); a.close().catch(()=>{}); },dur); }catch(e){} }
+
+// confetti
+function confettiBurst(){
+  const container=document.getElementById('confetti');
+  for(let i=0;i<40;i++){
+    const el=document.createElement('div'); el.style.position='absolute';
+    el.style.left=(50+Math.random()*60-30)+'%';
+    el.style.top=(10+Math.random()*10)+'%';
+    el.style.width='8px'; el.style.height='12px';
+    el.style.background=['#ffd166','#ff6b6b','#4ade80','#9bf6ff'][Math.floor(Math.random()*4)];
+    el.style.opacity='0.98'; el.style.transform='translateY(0) rotate('+Math.random()*360+'deg)';
+    el.style.borderRadius='2px'; el.style.pointerEvents='none';
+    el.style.transition='transform 1400ms cubic-bezier(.2,.7,.2,1),opacity 1300ms';
+    container.appendChild(el);
+    setTimeout(()=>{ el.style.transform='translateY(90vh) rotate('+ (360+Math.random()*720) +'deg)'; el.style.opacity='0'; },10+Math.random()*200);
+    setTimeout(()=>el.remove(),1500+Math.random()*300);
+  }
+}
+
+// pick word
+function pick(){
+  // when picking a new card, ensure paused state reset (pick should be active)
+  paused = false;
+  document.getElementById('pauseBtn').style.display = 'inline-block';
+  document.getElementById('resumeBtn').style.display = 'none';
+
+  clearTimeout(timer);
+  current = WORDS[Math.floor(Math.random()*WORDS.length)];
+  wordEl.innerText = current[0];
+  startTS = Date.now();
+  // animate time bar
+  timeBar.style.transition = 'none';
+  timeBar.style.width = '100%';
+  setTimeout(()=>{ timeBar.style.transition = 'width '+(visibleTime/1000)+'s linear'; timeBar.style.width='0%'; },10);
+  timer = setTimeout(()=>{ // miss
+    miss();
+  }, visibleTime);
+  visEl.innerText = (visibleTime/1000).toFixed(2);
+}
+
+// correct handling
+function correct(){
+  if(paused) return;
+  clearTimeout(timer);
+  score += 2; streak++; beep(900,120,0.05); navigator.vibrate?.(60);
+  showFeedback(true);
+  postPick();
+}
+
+// wrong handling
+function wrong(){
+  if(paused) return;
+  clearTimeout(timer);
+  score = Math.max(-999, score-1); streak=0; beep(220,140,0.06); navigator.vibrate?.(150);
+  showFeedback(false);
+  postPick();
+}
+
+// miss handling
+function miss(){
+  if(paused) return;
+  score = Math.max(-999, score-1); streak=0; beep(260,140,0.05); showFeedback(false,'miss');
+  postPick();
+}
+
+// after each round
+function postPick(){
+  updateUI();
+  // speed up rules
+  if(streak===5){ visibleTime = Math.max(900,visibleTime-1000); confettiBurst(); beep(1400,200,0.05); }
+  if(streak===10){ visibleTime = Math.max(700,visibleTime-800); confettiBurst(); beep(1600,250,0.06); }
+  // high score
+  if(score>high){ high=score; localStorage.setItem('wa_high',high); highEl.innerText=high; }
+  // show result briefly then pick next
+  setTimeout(()=>{ pick(); }, 700);
+}
+
+// feedback flash
+function showFeedback(ok, note){
+  wordEl.style.color = ok ? 'var(--good)' : 'var(--bad)';
+  if(ok && streak>0 && streak%5===0) confettiBurst();
+  setTimeout(()=>{ wordEl.style.color='var(--accent)'; },450);
+  const old=current?current[0]:'';
+  if(ok) wordEl.innerText = '✓ '+old; else wordEl.innerText = (note==='miss'?'(miss) ':'✕ ')+old;
+}
+
+// UI update
+function updateUI(){ scoreEl.innerText=score; streakEl.innerText=streak; visEl.innerText=(visibleTime/1000).toFixed(2); }
+
+// PAUSE functionality
+function pauseGame(){
+  if(paused) return;
+  paused = true;
+  clearTimeout(timer);
+  // compute remaining time
+  const elapsed = Date.now() - startTS;
+  remaining = Math.max(0, visibleTime - elapsed);
+  // freeze bar: compute percent left and set width
+  timeBar.style.transition = 'none';
+  const pct = (remaining/visibleTime)*100;
+  timeBar.style.width = pct + '%';
+  document.getElementById('pauseBtn').style.display = 'none';
+  document.getElementById('resumeBtn').style.display = 'inline-block';
+  // subtle feedback
+  beep(300,80,0.04);
+}
+
+// RESUME functionality
+function resumeGame(){
+  if(!paused) return;
+  paused = false;
+  // resume timing
+  startTS = Date.now();
+  // animate bar from current percent to 0 in "remaining" ms
+  timeBar.style.transition = 'none';
+  timeBar.style.width = (remaining/visibleTime*100)+'%';
+  setTimeout(()=>{ timeBar.style.transition = 'width '+(remaining/1000)+'s linear'; timeBar.style.width = '0%'; }, 10);
+  timer = setTimeout(()=>{ miss(); }, remaining);
+  document.getElementById('pauseBtn').style.display = 'inline-block';
+  document.getElementById('resumeBtn').style.display = 'none';
+  beep(700,80,0.04);
+}
+
+// restart quick reset
+function restartGame(){
+  score = 0; streak = 0; visibleTime = 3000; updateUI(); pick();
+}
+
+// event bindings
+document.getElementById('real').addEventListener('click', ()=>{ if(!current) return; if(current[1]==='real') correct(); else wrong(); });
+document.getElementById('filmy').addEventListener('click', ()=>{ if(!current) return; if(current[1]==='filmy') correct(); else wrong(); });
+document.getElementById('fake').addEventListener('click', ()=>{ if(!current) return; if(current[1]==='fake') correct(); else wrong(); });
+
+document.getElementById('pauseBtn').addEventListener('click', pauseGame);
+document.getElementById('resumeBtn').addEventListener('click', resumeGame);
+document.getElementById('restartBtn').addEventListener('click', ()=>{ if(confirm('Restart game?')) restartGame(); });
+
+// keyboard shortcuts for desktop/testing
+document.addEventListener('keydown',(e)=>{ if(e.key==='1') document.getElementById('real').click(); if(e.key==='2') document.getElementById('filmy').click(); if(e.key==='3') document.getElementById('fake').click(); if(e.key==='p') pauseGame(); if(e.key==='r') resumeGame(); });
+
+// start
+pick();
+updateUI();
+
+// pause when hidden
+document.addEventListener('visibilitychange', ()=>{ if(document.hidden){ clearTimeout(timer); } else { if(!timer && !paused) pick(); } });
+
+</script>
+</body></html>
