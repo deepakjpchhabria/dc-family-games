@@ -423,6 +423,7 @@ function acceptAnswer(input){
 function onSubmit(){
   if(paused) return;
   const val = answerInput.value.trim();
+  document.body.style.zoom = "1"; // Reset zoom and avoid extra zoom events
   if(!val){ alert('Type your guess then press SUBMIT'); answerInput.focus(); return; }
   if(acceptAnswer(val)){
     clearTimeout(timer);
