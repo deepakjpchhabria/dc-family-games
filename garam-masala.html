@@ -56,6 +56,8 @@
   pointer-events: none;
   transition: transform 900ms ease-out, opacity 900ms ease-out;
 }
+/* prevent iOS auto-zoom by making input large enough */
+#answerInput { font-size: 16px; -webkit-text-size-adjust: 100%; }
 </style>
 </head>
 <body>
@@ -420,7 +422,19 @@ function acceptAnswer(input){
   return false;
 }
 
+// call this at very start of onSubmit()
+function normalizeAfterInputInteraction() {
+  // 1) blur input to close keyboard immediately (this is the main thing)
+  try { answerInput.blur(); } catch(e){} 
+  // 2) small delay then lock viewport to force zoom-out (fallback)
+  setTimeout(()=> lockViewportOnce(300), 30);
+}
+
 function onSubmit(){
+  
+   // immediately normalize view so user doesn't lose time
+  normalizeAfterInputInteraction()
+  
   if(paused) return;
   const val = answerInput.value.trim();
   document.body.style.zoom = "1"; // Reset zoom and avoid extra zoom events
@@ -622,7 +636,16 @@ saveProgress(true);
 
 /* save before unload */
 window.addEventListener('beforeunload', ()=>{ saveProgress(); });
-
+// Fallback viewport reset (temporarily lock scale to 1 to force zoom out)
+function lockViewportOnce(ms = 250) {
+  const meta = document.querySelector('meta[name="viewport"]');
+  if(!meta) return;
+  const prev = meta.getAttribute('content') || 'width=device-width,initial-scale=1';
+  // set maximum-scale=1 to prevent iOS from re-zooming while we blur keyboard
+  meta.setAttribute('content', prev + ', maximum-scale=1');
+  // restore after a short delay
+  setTimeout(() => meta.setAttribute('content', prev), ms);
+}
 </script>
 </body>
 </html>
