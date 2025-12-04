@@ -444,6 +444,11 @@ function onSubmit(){
   }
 }
 
+// After handling the answer submission
+function resetZoom() {
+  document.querySelector('meta[name="viewport"]').setAttribute('content', 'width=device-width, initial-scale=1.0');
+}
+
 function onSkip(){
   if(!confirm('Skip this word?')) return;
   clearTimeout(timer);
@@ -593,7 +598,7 @@ document.getElementById('submitBtn').addEventListener('click', () => {
     onSubmit();
     updateHeader();
     saveProgress();
-    
+    resetZoom();
     // Explicitly dismiss the keyboard
     document.activeElement?.blur(); // Deselects input element to close the keyboard
 });
