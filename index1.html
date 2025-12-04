@@ -30,28 +30,28 @@
   <div class="wrap">
     <header>
       <div>
-        <h1>Deepak's Game Arcade</h1>
-        <div class="sub">Family-friendly games — quick, filmy, and fun. Add to home screen for the best experience.</div>
+        <h1>DC Family Games</h1>
+        <div class="sub">Quick, filmy, and fun. Add to home screen for the best experience.</div>
       </div>
-      <div class="meta">Two games • Share with family • No trackers</div>
+      <div class="meta"> • Share with family • No trackers • </div>
     </header>
 
     <div class="grid">
       <div class="card">
-        <div class="title">Garam Masala — Unscramble</div>
+        <div class="title">Garam Masala</div>
         <div class="desc">Bollywood-themed unscramble. Slow family mode: 3 minutes per word, 10 words per level.</div>
         <div class="playRow">
-          <a id="linkGar" class="play" href="/dc-family-games/" target="_blank" rel="noopener">Play Garam Masala</a>
+          <a id="linkGar" class="play" href="/garam-masala.html" target="_blank" rel="noopener">Play Garam Masala</a>
           <div style="color:var(--muted)">Plays: <span id="plays_garam">0</span></div>
         </div>
       </div>
 
       <div class="card">
-        <div class="title">Andaz Apna Apna — Emoji Edition</div>
+        <div class="title">Andaz Apna Apna</div>
         <div class="desc">Guess the Bollywood movie from emojis. Short rounds, big laughs — family favourite.</div>
         <div class="playRow">
           <!-- CHANGE this href to wherever your emoji game lives -->
-          <a id="linkEmoji" class="play" href="/andaz-emoji/" target="_blank" rel="noopener">Play Emoji Game</a>
+          <a id="linkEmoji" class="play" href="/andaz-apna-apna.html/" target="_blank" rel="noopener">Play Game</a>
           <div style="color:var(--muted)">Plays: <span id="plays_emoji">0</span></div>
         </div>
       </div>
@@ -63,7 +63,7 @@
       <button id="resetCounts" class="btn">Reset stats</button>
     </div>
 
-    <div class="small">Tip: open on phone, tap Add to Home Screen for instant-launch. Want centralized analytics or QR codes? I can add them.</div>
+    <div class="small">Tip: open on phone, tap Add to Home Screen for instant-launch.</div>
   </div>
 
 <script>
@@ -87,7 +87,7 @@ document.getElementById('linkEmoji').addEventListener('click', ()=> incCount('em
 /* share hub */
 document.getElementById('shareHub').addEventListener('click', ()=>{
   const url = location.href;
-  const text = 'Play Deepak\'s family games: Garam Masala and Andaz Apna Apna — Emoji Edition';
+  const text = 'Play DC\'s family games: Garam Masala and Andaz Apna Apna';
   if(navigator.share) navigator.share({title:'Deepak Game Arcade', text, url}).catch(()=>navigator.clipboard?.writeText(url).then(()=>alert('Link copied')));
   else navigator.clipboard?.writeText(url).then(()=>alert('Link copied to clipboard!'));
 });
